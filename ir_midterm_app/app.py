@@ -640,7 +640,6 @@ def render_grading_section() -> None:
           <div class="link-row">
             <a class="link-chip" href="{GITHUB_URL}">프로그램 소스: GitHub</a>
             <a class="link-chip" href="{DEMO_URL}">데모 사이트: {DEMO_URL}</a>
-            <a class="link-chip" href="?q=constitution+people">검증 질의 예시</a>
           </div>
         </section>
         <div class="section-title">프로그램 개요 적용 체크리스트</div>
@@ -668,36 +667,31 @@ def render_rank_comparison(engine: InauguralSearchEngine, query: str) -> None:
     cosine_results = engine.search(query, method="cosine", top_k=5)
     bm25_results = engine.search(query, method="BM25", top_k=5)
 
-    def render_list(title: str, results: list) -> str:
-        rows = "".join(
-            f"""
-            <div class="compare-row">
-              <span class="compare-rank">#{rank}</span>
-              <span class="compare-name">
-                {result.year} {escape(result.president)}
-                <a class="doc-link" style="margin: 0 0 0 8px; font-size: 0.86rem;" href="{make_doc_url(result.file_id)}">원문</a>
-              </span>
-              <span class="compare-score">{result.score:.4f}</span>
-            </div>
-            """
-            for rank, result in enumerate(results, start=1)
-        )
-        return f'<div class="compare-list"><h4>{title}</h4>{rows}</div>'
-
     st.markdown(
-        f"""
+        """
         <div class="section-title">보조 기능: Cosine vs BM25 랭킹 비교</div>
         <p class="hero-copy" style="font-size: 0.98rem;">
           같은 질의를 두 랭킹 함수에 동시에 넣어 결과 순위 차이를 비교합니다.
           Vector-space cosine 관점과 BM25 문서 길이 보정 관점이 어떻게 다른지 확인하기 위한 기능입니다.
         </p>
-        <div class="rank-compare">
-          {render_list("Cosine TF-IDF Top 5", cosine_results)}
-          {render_list("BM25 Top 5", bm25_results)}
-        </div>
         """,
         unsafe_allow_html=True,
     )
+    cosine_col, bm25_col = st.columns(2)
+
+    def render_column(title: str, results: list) -> None:
+        st.markdown(f"#### {title}")
+        for rank, result in enumerate(results, start=1):
+            row = st.columns([0.55, 2.15, 0.9, 0.75])
+            row[0].markdown(f"**#{rank}**")
+            row[1].markdown(f"**{result.year} {result.president}**  \n`{result.file_id}`")
+            row[2].markdown(f"`{result.score:.4f}`")
+            row[3].link_button("원문", make_doc_url(result.file_id), width="stretch")
+
+    with cosine_col:
+        render_column("Cosine TF-IDF Top 5", cosine_results)
+    with bm25_col:
+        render_column("BM25 Top 5", bm25_results)
 
 
 def render_search_view(engine: InauguralSearchEngine) -> None:
@@ -782,8 +776,8 @@ def render_search_view(engine: InauguralSearchEngine) -> None:
                     unsafe_allow_html=True,
                 )
 
-            render_rank_comparison(engine, query)
             render_results(engine, query, method, top_k)
+            render_rank_comparison(engine, query)
         else:
             st.info("검색어를 입력하세요.")
 
