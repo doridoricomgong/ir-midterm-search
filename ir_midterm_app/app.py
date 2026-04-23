@@ -643,11 +643,6 @@ def render_grading_section() -> None:
             <a class="link-chip" href="?q=constitution+people">검증 질의 예시</a>
           </div>
         </section>
-        <div class="grading-card" style="margin-bottom: 18px;">
-          <strong>{escape(ADDED_FEATURE["title"])}</strong>
-          <p><b>활용 자료:</b> {escape(ADDED_FEATURE["source"])}</p>
-          <p><b>기능 의미:</b> {escape(ADDED_FEATURE["value"])}</p>
-        </div>
         <div class="section-title">프로그램 개요 적용 체크리스트</div>
         <div class="grading-grid">{checklist_cards}</div>
         <div class="section-title">강의 내용 적용 매핑</div>
@@ -657,6 +652,13 @@ def render_grading_section() -> None:
           </thead>
           <tbody>{lecture_rows}</tbody>
         </table>
+        <div class="section-title">보조자료 기반 추가 기능</div>
+        <div class="grading-card" style="margin-bottom: 18px;">
+          <strong>{escape(ADDED_FEATURE["title"])}</strong>
+          <p><b>활용 자료:</b> {escape(ADDED_FEATURE["source"])}</p>
+          <p><b>기능 의미:</b> {escape(ADDED_FEATURE["value"])}</p>
+          <p><b>화면 확인:</b> 데모 탭의 Cosine vs BM25 랭킹 비교 패널에서 각 결과의 원문 링크까지 확인할 수 있습니다.</p>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -671,7 +673,10 @@ def render_rank_comparison(engine: InauguralSearchEngine, query: str) -> None:
             f"""
             <div class="compare-row">
               <span class="compare-rank">#{rank}</span>
-              <span class="compare-name">{result.year} {escape(result.president)}</span>
+              <span class="compare-name">
+                {result.year} {escape(result.president)}
+                <a class="doc-link" style="margin: 0 0 0 8px; font-size: 0.86rem;" href="{make_doc_url(result.file_id)}">원문</a>
+              </span>
               <span class="compare-score">{result.score:.4f}</span>
             </div>
             """
