@@ -84,6 +84,12 @@ LECTURE_MAP = [
     ("lecture08-evaluation", "Ranked results, dynamic summaries", "대표 문장 snippet과 수동 검증 질의로 결과 분석"),
 ]
 
+ADDED_FEATURE = {
+    "title": "보조자료 기반 추가 기능: Cosine vs BM25 랭킹 비교",
+    "source": "Week 2 VectorDB/HNSW/Cosine 자료와 lecture06-07의 vector-space scoring을 연결",
+    "value": "같은 질의가 cosine과 BM25에서 어떻게 다르게 순위화되는지 한 화면에서 비교해 랭킹 함수의 차이를 설명합니다.",
+}
+
 
 @st.cache_resource(show_spinner="NLTK Inaugural Address 코퍼스를 색인하는 중입니다.")
 def get_engine() -> InauguralSearchEngine:
@@ -182,10 +188,10 @@ def inject_design_system() -> None:
         }
 
         .hero-title {
-            margin: 18px 0 10px;
-            max-width: 850px;
-            font: 750 clamp(2.4rem, 6vw, 5.6rem)/0.92 "Fraunces", Georgia, serif;
-            letter-spacing: -0.075em;
+            margin: 14px 0 10px;
+            max-width: 760px;
+            font: 750 clamp(2.0rem, 4.2vw, 3.8rem)/0.96 "Fraunces", Georgia, serif;
+            letter-spacing: -0.065em;
             color: var(--ink);
         }
 
@@ -393,10 +399,10 @@ def inject_design_system() -> None:
         }
 
         .grading-hero {
-            margin-top: 34px;
+            margin: 12px 0 18px;
             border: 1px solid rgba(23, 34, 28, 0.18);
             border-radius: 30px;
-            padding: 26px;
+            padding: 22px;
             background:
                 linear-gradient(135deg, rgba(23, 34, 28, 0.91), rgba(47, 81, 61, 0.82)),
                 radial-gradient(circle at top right, rgba(180, 132, 50, 0.34), transparent 18rem);
@@ -479,8 +485,51 @@ def inject_design_system() -> None:
 
         .mapping-table tr:last-child td { border-bottom: 0; }
 
+        .rank-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 14px 0 26px;
+        }
+
+        .compare-list {
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            padding: 16px;
+            background: rgba(255, 252, 243, 0.76);
+            box-shadow: 0 14px 34px rgba(42, 36, 24, 0.08);
+        }
+
+        .compare-list h4 {
+            margin: 0 0 10px;
+            font: 750 1.15rem "Fraunces", Georgia, serif;
+            color: var(--moss);
+        }
+
+        .compare-row {
+            display: grid;
+            grid-template-columns: 42px 1fr auto;
+            gap: 10px;
+            align-items: center;
+            padding: 9px 0;
+            border-top: 1px solid rgba(45, 55, 44, 0.12);
+        }
+
+        .compare-row:first-of-type { border-top: 0; }
+        .compare-rank {
+            border-radius: 12px;
+            background: rgba(23, 34, 28, 0.08);
+            color: var(--ink);
+            text-align: center;
+            font-weight: 900;
+            padding: 5px 0;
+        }
+
+        .compare-name { font-weight: 800; color: var(--ink); }
+        .compare-score { color: #74511c; font-weight: 800; }
+
         @media (max-width: 860px) {
-            .stat-grid, .checklist, .grading-grid { grid-template-columns: 1fr; }
+            .stat-grid, .checklist, .grading-grid, .rank-compare { grid-template-columns: 1fr; }
             .hero { padding: 26px 22px; }
             .result-card { padding-left: 22px; padding-top: 84px; }
             .rank-stamp { top: 18px; }
@@ -586,7 +635,7 @@ def render_grading_section() -> None:
           <div class="section-title" style="font-size: 2rem;">채점 확인 요약</div>
           <p class="hero-copy">
             보고서 제출 전 교수/채점자가 요구사항, 소스, 데모, 강의 매핑을 빠르게 확인할 수 있도록
-            구현 근거를 한 곳에 모았습니다.
+            구현 근거를 한 곳에 모았습니다. 이 탭은 Chrome/Safari의 인쇄 기능으로 PDF 저장하기 좋게 구성했습니다.
           </p>
           <div class="link-row">
             <a class="link-chip" href="{GITHUB_URL}">프로그램 소스: GitHub</a>
@@ -594,6 +643,11 @@ def render_grading_section() -> None:
             <a class="link-chip" href="?q=constitution+people">검증 질의 예시</a>
           </div>
         </section>
+        <div class="grading-card" style="margin-bottom: 18px;">
+          <strong>{escape(ADDED_FEATURE["title"])}</strong>
+          <p><b>활용 자료:</b> {escape(ADDED_FEATURE["source"])}</p>
+          <p><b>기능 의미:</b> {escape(ADDED_FEATURE["value"])}</p>
+        </div>
         <div class="section-title">프로그램 개요 적용 체크리스트</div>
         <div class="grading-grid">{checklist_cards}</div>
         <div class="section-title">강의 내용 적용 매핑</div>
@@ -608,16 +662,49 @@ def render_grading_section() -> None:
     )
 
 
+def render_rank_comparison(engine: InauguralSearchEngine, query: str) -> None:
+    cosine_results = engine.search(query, method="cosine", top_k=5)
+    bm25_results = engine.search(query, method="BM25", top_k=5)
+
+    def render_list(title: str, results: list) -> str:
+        rows = "".join(
+            f"""
+            <div class="compare-row">
+              <span class="compare-rank">#{rank}</span>
+              <span class="compare-name">{result.year} {escape(result.president)}</span>
+              <span class="compare-score">{result.score:.4f}</span>
+            </div>
+            """
+            for rank, result in enumerate(results, start=1)
+        )
+        return f'<div class="compare-list"><h4>{title}</h4>{rows}</div>'
+
+    st.markdown(
+        f"""
+        <div class="section-title">보조 기능: Cosine vs BM25 랭킹 비교</div>
+        <p class="hero-copy" style="font-size: 0.98rem;">
+          같은 질의를 두 랭킹 함수에 동시에 넣어 결과 순위 차이를 비교합니다.
+          Vector-space cosine 관점과 BM25 문서 길이 보정 관점이 어떻게 다른지 확인하기 위한 기능입니다.
+        </p>
+        <div class="rank-compare">
+          {render_list("Cosine TF-IDF Top 5", cosine_results)}
+          {render_list("BM25 Top 5", bm25_results)}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_search_view(engine: InauguralSearchEngine) -> None:
     inject_design_system()
     st.markdown(
         f"""
         <section class="hero">
           <div class="eyebrow">Information Retrieval Midterm</div>
-          <div class="hero-title">Presidential Address Search Lab</div>
+          <div class="hero-title">IR Search Demo & Grading Evidence</div>
           <p class="hero-copy">
-            NLTK 미국 대통령 취임사 코퍼스를 색인하고, cosine TF-IDF와
-            BM25(k1={BM25_K1}, b={BM25_B})의 결과 차이를 제출용으로 바로 확인합니다.
+            NLTK 미국 대통령 취임사 검색 시스템입니다. 데모 탭에서는 기능을 직접 검증하고,
+            채점/보고서 탭에서는 구현 근거와 강의 매핑을 확인합니다.
           </p>
           <div class="checklist">
             <div class="check">docID + 대통령명 저장</div>
@@ -628,65 +715,75 @@ def render_search_view(engine: InauguralSearchEngine) -> None:
             <div class="check">중요 문장 snippet</div>
           </div>
         </section>
-        <div class="stat-grid">
-          <div class="stat-card"><div class="stat-label">Corpus</div><div class="stat-value">{engine.document_count}</div></div>
-          <div class="stat-card"><div class="stat-label">Dictionary</div><div class="stat-value">{len(engine.dictionary):,}</div></div>
-          <div class="stat-card"><div class="stat-label">Avg Length</div><div class="stat-value">{engine.average_document_length:.0f}</div></div>
-          <div class="stat-card"><div class="stat-label">Range</div><div class="stat-value">1789-2021</div></div>
-        </div>
         """,
         unsafe_allow_html=True,
     )
+    demo_tab, grading_tab = st.tabs(["데모", "채점/보고서"])
 
-    st.markdown('<div class="section-title">Search Console</div>', unsafe_allow_html=True)
-    initial_query = st.query_params.get("q", "freedom union")
-    query = st.text_input("검색어", value=initial_query, placeholder="예: freedom union")
-
-    sample_cols = st.columns(len(SAMPLE_QUERIES))
-    for col, sample in zip(sample_cols, SAMPLE_QUERIES):
-        if col.button(sample, width="stretch"):
-            st.query_params["q"] = sample
-            st.rerun()
-
-    control_cols = st.columns([1, 1, 2])
-    with control_cols[0]:
-        method = st.radio("Ranking method", ["cosine", "BM25"], horizontal=True)
-    with control_cols[1]:
-        top_k = st.slider("결과 수", min_value=3, max_value=20, value=10)
-    with control_cols[2]:
+    with demo_tab:
         st.markdown(
             f"""
-            <div class="method-note">
-              <strong>{escape(method)}</strong> 선택 중입니다.
-              cosine은 TF-IDF 벡터 각도, BM25는 문서 길이 보정 TF를 사용합니다.
+            <div class="stat-grid">
+              <div class="stat-card"><div class="stat-label">Corpus</div><div class="stat-value">{engine.document_count}</div></div>
+              <div class="stat-card"><div class="stat-label">Dictionary</div><div class="stat-value">{len(engine.dictionary):,}</div></div>
+              <div class="stat-card"><div class="stat-label">Avg Length</div><div class="stat-value">{engine.average_document_length:.0f}</div></div>
+              <div class="stat-card"><div class="stat-label">Range</div><div class="stat-value">1789-2021</div></div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    if not query.strip():
-        st.info("검색어를 입력하세요.")
-        return
+        st.markdown('<div class="section-title">Search Console</div>', unsafe_allow_html=True)
+        initial_query = st.query_params.get("q", "freedom union")
+        query = st.text_input("검색어", value=initial_query, placeholder="예: freedom union")
 
-    diag_col, guide_col = st.columns([1.05, 1.0])
-    with diag_col:
-        render_query_diagnostics(engine, query)
-    with guide_col:
-        st.markdown(
-            """
-            <div class="panel">
-              <div class="section-title">읽는 방법</div>
-              <p class="hero-copy" style="font-size: 0.98rem;">
-                각 결과 카드는 대통령/연도, 랭킹 점수, 질의어 TF, 그리고 질의어 IDF 기반으로
-                고른 대표 문장을 함께 보여줍니다. 원문 링크는 Streamlit 내부 URL입니다.
-              </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        sample_cols = st.columns(len(SAMPLE_QUERIES))
+        for col, sample in zip(sample_cols, SAMPLE_QUERIES):
+            if col.button(sample, width="stretch"):
+                st.query_params["q"] = sample
+                st.rerun()
 
-    render_results(engine, query, method, top_k)
-    render_grading_section()
+        control_cols = st.columns([1, 1, 2])
+        with control_cols[0]:
+            method = st.radio("Ranking method", ["cosine", "BM25"], horizontal=True)
+        with control_cols[1]:
+            top_k = st.slider("결과 수", min_value=3, max_value=20, value=10)
+        with control_cols[2]:
+            st.markdown(
+                f"""
+                <div class="method-note">
+                  <strong>{escape(method)}</strong> 선택 중입니다.
+                  cosine은 TF-IDF 벡터 각도, BM25는 문서 길이 보정 TF를 사용합니다.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        if query.strip():
+            diag_col, guide_col = st.columns([1.05, 1.0])
+            with diag_col:
+                render_query_diagnostics(engine, query)
+            with guide_col:
+                st.markdown(
+                    """
+                    <div class="panel">
+                      <div class="section-title">읽는 방법</div>
+                      <p class="hero-copy" style="font-size: 0.98rem;">
+                        각 결과 카드는 대통령/연도, 랭킹 점수, 질의어 TF, 그리고 질의어 IDF 기반으로
+                        고른 대표 문장을 함께 보여줍니다. 원문 링크는 Streamlit 내부 URL입니다.
+                      </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            render_rank_comparison(engine, query)
+            render_results(engine, query, method, top_k)
+        else:
+            st.info("검색어를 입력하세요.")
+
+    with grading_tab:
+        render_grading_section()
 
 
 def main() -> None:
