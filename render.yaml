@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ir-midterm-search
+    runtime: python
+    plan: starter
+    rootDir: ir_midterm_app
+    buildCommand: pip install -r requirements.txt && python -m nltk.downloader -d ./nltk_data inaugural
+    startCommand: streamlit run app.py --server.address 0.0.0.0 --server.port $PORT --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.14
+      - key: NLTK_DATA
+        value: ./nltk_data

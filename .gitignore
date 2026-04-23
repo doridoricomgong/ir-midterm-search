@@ -1,0 +1,15 @@
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local class/reference material and unrelated workspace files.
+ir_class/
+landing/
+hpc_text_positions*.txt
+hpc_form_sources.md
+fill_hpc_form.py
+
+# Render downloads NLTK data during build.
+ir_midterm_app/nltk_data/
