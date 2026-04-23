@@ -15,6 +15,8 @@ streamlit run app.py
 
 ## Render 배포
 
+데모 사이트: `https://ir-midterm-search.onrender.com`
+
 이 저장소 루트의 `render.yaml`은 Render Blueprint 배포용입니다. Render Starter 기준으로 설정되어 있고, 앱 루트는 `ir_midterm_app`입니다.
 
 Render Dashboard에서 Blueprint를 쓰지 않고 Web Service로 직접 만들 경우:

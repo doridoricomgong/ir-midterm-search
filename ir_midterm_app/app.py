@@ -639,7 +639,7 @@ def render_grading_section() -> None:
           </p>
           <div class="link-row">
             <a class="link-chip" href="{GITHUB_URL}">프로그램 소스: GitHub</a>
-            <a class="link-chip" href="{DEMO_URL}">데모 사이트: Render</a>
+            <a class="link-chip" href="{DEMO_URL}">데모 사이트: {DEMO_URL}</a>
             <a class="link-chip" href="?q=constitution+people">검증 질의 예시</a>
           </div>
         </section>
